@@ -22,8 +22,8 @@ fn main() -> Result<()>{
 
     terminal.draw(|f| {
         f.render_widget(
-            Paragraph::new("Hello World!")
-                .block(Block::default().title("Greeting").borders(Borders::ALL)),
+            Paragraph::new("Press any number to start")
+                .block(Block::default().title("Currently memorized to 0 digits").borders(Borders::ALL)),
             f.size())
     })?;
     loop {
@@ -54,7 +54,7 @@ fn main() -> Result<()>{
                     terminal.draw(|f| {
                         f.render_widget(
                             Paragraph::new(list.clone())
-                                .block(Block::default().title("Pi").borders(Borders::ALL)),
+                                .block(Block::default().title((counter+1).to_string()).borders(Borders::ALL)),
                             f.size())
                     })?;
                     counter += 1
