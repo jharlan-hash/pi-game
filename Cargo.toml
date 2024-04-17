@@ -1,3 +1,5 @@
+cargo-features = ["codegen-backend"]
+
 [package]
 name = "ratatui_counter_app"
 version = "0.1.0"
@@ -10,3 +12,13 @@ anyhow = "1.0.79"
 crossterm = "0.27.0"
 ratatui = "0.25.0"
 tui-big-text = "0.4.1"
+
+[profile.jack]
+inherits = "dev"
+opt-level = 0
+debug = 0
+strip = "none"
+lto = false
+codegen-units = 256
+incremental = true
+codegen-backend = "cranelift"
