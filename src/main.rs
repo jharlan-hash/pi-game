@@ -1,5 +1,6 @@
 // import necessary modules
 use std::{time};
+use std::cmp::max;
 use ratatui::widgets::Paragraph;
 use ratatui::prelude::*;
 
@@ -102,7 +103,7 @@ fn main() -> Result<()>{
                         .pixel_size(PixelSize::Full)
                         .style(Style::new().blue())
                         .lines(vec![
-                            collected_vec.white().into(), // the hint display is white and shown
+                            animate(collected_vec, counter).white().into(), // the hint display is white and shown
                         ]) 
                         .build()?;
 
@@ -119,7 +120,7 @@ fn main() -> Result<()>{
 
                         f.render_widget(
                             Paragraph::new(typed_characters.to_string())
-                                .block(Block::default().title(format!("Pi memorized to {} digits", counter+1).to_string()).borders(Borders::ALL)),
+                                .block(Block::default().title(format!("Pi memorized to {} digits", max(counter, 1)-1).to_string()).borders(Borders::ALL)),
                             layout[1]);
                     })?;
 
@@ -132,6 +133,17 @@ fn main() -> Result<()>{
     // shutdown: reset terminal back to original state
     crossterm::execute!(std::io::stderr(), LeaveAlternateScreen)?;
     disable_raw_mode()?;
-
+    println!("You memorized {} digits of pi!", counter);
+    assert!( std::process::Command::new("cls").status().or_else(|_| std::process::Command::new("clear").status()).unwrap().success() );
     Ok(())
+}
+
+fn animate(collected_vec: String, counter: usize) -> String {
+    let collected_vec = collected_vec.chars().collect::<Vec<char>>();
+    if collected_vec.len() <= 1{
+        return "".to_string()
+    } else {
+        let collected_vec = collected_vec[counter + 1].to_string();
+        collected_vec
+    }
 }
