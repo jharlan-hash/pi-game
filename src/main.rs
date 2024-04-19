@@ -1,7 +1,6 @@
 // import necessary modules
 use std::{time};
 use std::cmp::max;
-use std::io::prelude::*;
 use std::fs::File;
 use std::io::Write;
 use std::thread::sleep;
@@ -85,7 +84,7 @@ fn main() -> Result<()>{
                         _ => continue,
                     };
 
-                    
+
                     typed_characters.push(matched_key); // add the matched key to the input buffer
 
                     // if the added character is not equal to the pi sequence, break
@@ -103,36 +102,37 @@ fn main() -> Result<()>{
                         hint_display.push(pi[limit-1]); // the one is subtracted to account for the 0 index
                         limit += 1;
                     }
-                    
+
                     // This function will animate the hint display
-                    let value = (collected_vec);
-                    log(&counter.to_string())?;
-                    
-                    let big_text = BigTextBuilder::default()
-                        .pixel_size(PixelSize::Full)
-                        .style(Style::new())
-                        .lines(vec![
-                            value.clone().white().into(), // the hint display is white and shown
-                        ])
-                        .build()?;
+                    for _i in 0..(counter + 1) {
+                        let value = animate_letters(collected_vec.clone(), counter);
+                        log(&value.clone().expect("something went wrong logging the value"));
 
-
-                    terminal.draw(|f| {
-                        let layout = Layout::default()
-                            .direction(Direction::Vertical)
-                            .constraints(vec![
-                                Constraint::Min(7),
-                                Constraint::Percentage(100),
+                        let big_text = BigTextBuilder::default()
+                            .pixel_size(PixelSize::Full)
+                            .style(Style::new())
+                            .lines(vec![
+                                value.expect("something went wrong animating letters").clone().white().into(), // the hint display is white and shown
                             ])
-                            .split(f.size());
+                            .build()?;
 
-                        f.render_widget(big_text, layout[0]);
+                        terminal.draw(|f| {
+                            let layout = Layout::default()
+                                .direction(Direction::Vertical)
+                                .constraints(vec![
+                                    Constraint::Min(7),
+                                    Constraint::Percentage(100),
+                                ])
+                                .split(f.size());
 
-                        f.render_widget(
-                            Paragraph::new(typed_characters.to_string())
-                                .block(Block::default().title(format!("Pi memorized to {} digits.", (max(counter, 1) - 1)).to_string()).borders(Borders::ALL)),
-                            layout[1]);
-                    })?;
+                            f.render_widget(big_text, layout[0]);
+
+                            f.render_widget(
+                                Paragraph::new(typed_characters.to_string())
+                                    .block(Block::default().title(format!("Pi memorized to {} digits", (max(counter, 1) - 1)).to_string()).borders(Borders::ALL)),
+                                layout[1]);
+                        })?;
+                    }
                     
                     counter += 1
                 }
@@ -153,6 +153,12 @@ fn log(variable: &str) -> std::io::Result<()> {
     file.write_all(variable.as_bytes())?;
     Ok(())
 }
-//fn animate_letters(collected_vec: String) -> Option<String> {
-    
-//}
+
+fn animate_letters(collected_vec: String, counter: usize) -> Option<String> {
+    for i in 0..(counter + 1){
+        let letter = &collected_vec[..i];
+        sleep(time::Duration::from_millis(6));
+        return Some(letter.to_string());
+    }
+    None
+}
