@@ -4,6 +4,7 @@ use std::cmp::max;
 use std::fs::File;
 use std::io::Write;
 use std::thread::sleep;
+use std::time::Duration;
 use ratatui::widgets::Paragraph;
 use ratatui::prelude::*;
 
@@ -23,6 +24,7 @@ fn main() -> Result<()>{
     let mut hint_display: Vec<char> = Vec::new(); // this is the big text hint display
     let _duration = time::Duration::from_millis(333);
     let mut counter = 0;
+    let mut animation_counter = 0;
     let mut limit = 1;
     let mut typed_characters = String::new(); // input buffer
     enable_raw_mode()?;
@@ -93,7 +95,7 @@ fn main() -> Result<()>{
                     }
 
                     // Collecting the hint display into a string for bigtext formatting
-                    let collected_vec: String = hint_display.clone().into_iter().collect();
+                    //let collected_vec: String = hint_display.clone().into_iter().collect();
 
                     // limit is set to 1 at the start of the program
                     // This loop will add the next character to the hint display
@@ -104,15 +106,14 @@ fn main() -> Result<()>{
                     }
 
                     // This function will animate the hint display
-                    for _i in 0..(counter + 1) {
-                        let value = animate_letters(collected_vec.clone(), counter);
-                        log(&value.clone().expect("something went wrong logging the value"));
+                    for i in 0..(animation_counter + 2) {
+                        let value = animate_letters(sequence, animation_counter);
 
                         let big_text = BigTextBuilder::default()
                             .pixel_size(PixelSize::Full)
                             .style(Style::new())
                             .lines(vec![
-                                value.expect("something went wrong animating letters").clone().white().into(), // the hint display is white and shown
+                                value[i].to_string().clone().white().into(), // the hint display is white and shown
                             ])
                             .build()?;
 
@@ -132,9 +133,11 @@ fn main() -> Result<()>{
                                     .block(Block::default().title(format!("Pi memorized to {} digits", (max(counter, 1) - 1)).to_string()).borders(Borders::ALL)),
                                 layout[1]);
                         })?;
+                        sleep(Duration::from_millis(333)); // sleep for 333 milliseconds
                     }
-                    
-                    counter += 1
+                    typed_characters = "".to_string(); // clear the input buffer
+                    animation_counter += 1; // reset the animation counter
+                    counter = 0 // reset the counter
                 }
             }
         }
@@ -148,17 +151,19 @@ fn main() -> Result<()>{
     Ok(())
 }
 
+/*
 fn log(variable: &str) -> std::io::Result<()> {
     let mut file = File::create("log.txt")?;
     file.write_all(variable.as_bytes())?;
     Ok(())
 }
+ */
 
-fn animate_letters(collected_vec: String, counter: usize) -> Option<String> {
-    for i in 0..(counter + 1){
-        let letter = &collected_vec[..i];
-        sleep(time::Duration::from_millis(6));
-        return Some(letter.to_string());
+fn animate_letters(sequence: &str, counter: usize) -> Vec<String> {
+    let mut hint_vec: Vec<String> = Vec::new();
+    for i in 0..(counter + 1) {
+        hint_vec.push(sequence[..i + 2].to_string().parse().unwrap())
     }
-    None
+    hint_vec.push(" ".to_string());
+    hint_vec
 }
