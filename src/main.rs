@@ -1,31 +1,26 @@
 // import necessary modules
-use std::{time};
-use std::cmp::max;
-use std::fs::File;
-use std::io::Write;
-use std::thread::sleep;
-use std::time::Duration;
-use ratatui::widgets::Paragraph;
-use ratatui::prelude::*;
-
-use crossterm::{terminal::{
-    enable_raw_mode,
-    disable_raw_mode,
-    EnterAlternateScreen,
-    LeaveAlternateScreen,
-}, event::KeyCode::Char};
-
 use anyhow::Result;
-use crossterm::event::{Event};
+use crossterm::event::Event;
+use crossterm::{
+    event::KeyCode::Char,
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+};
+use ratatui::prelude::*;
+use ratatui::widgets::Paragraph;
 use ratatui::widgets::{Block, Borders};
+use std::cmp::max;
+use std::collections::VecDeque;
+use std::thread::sleep;
+use std::time;
+use std::time::Duration;
+use term_size;
 use tui_big_text::{BigTextBuilder, PixelSize}; // allows big text
 
-fn main() -> Result<()>{
-    let mut hint_display: Vec<char> = Vec::new(); // this is the big text hint display
+fn main() -> Result<()> {
     let _duration = time::Duration::from_millis(333);
-    let mut counter = 0;
+    let howmany = 0;
+    let mut counter: usize = 0;
     let mut animation_counter = 0;
-    let mut limit = 1;
     let mut typed_characters = String::new(); // input buffer
     enable_raw_mode()?;
     crossterm::execute!(std::io::stderr(), EnterAlternateScreen)?;
@@ -37,14 +32,13 @@ fn main() -> Result<()>{
     // This code is using the Crossterm library to draw to the terminal
     // and the Ratatui library to create a layout and a paragraph widget.
     // This is only run the first time to initialize the terminal and draw the paragraph widget.
-
     terminal.draw(|f| {
         // Create a layout with two vertical sections
         let layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints(vec![
                 // The first section has a minimum height of 7 lines
-                Constraint::Min(7),
+                Constraint::Min(8),
                 // The second section takes up the remaining vertical space
                 Constraint::Percentage(100),
             ])
@@ -55,9 +49,14 @@ fn main() -> Result<()>{
             // Create a new paragraph widget with the contents of the `typed_characters` variable
             Paragraph::new(typed_characters.to_string())
                 // Add a block around the paragraph with a title and borders
-                .block(Block::default().title("Pi memorized to 0 digits".to_string()).borders(Borders::ALL)),
+                .block(
+                    Block::default()
+                        .title("Type \"3\" to begin!".to_string())
+                        .borders(Borders::ALL),
+                ),
             // Render the paragraph widget in the second section of the layout
-            layout[1]);
+            layout[1],
+        );
     })?;
 
     // Main event loop
@@ -86,58 +85,84 @@ fn main() -> Result<()>{
                         _ => continue,
                     };
 
-
                     typed_characters.push(matched_key); // add the matched key to the input buffer
 
                     // if the added character is not equal to the pi sequence, break
                     if pi[counter] != matched_key {
-                        break
-                    }
-
-                    // Collecting the hint display into a string for bigtext formatting
-                    //let collected_vec: String = hint_display.clone().into_iter().collect();
-
-                    // limit is set to 1 at the start of the program
-                    // This loop will add the next character to the hint display
-                    // The 2 is added to the length of the typed characters to account for the 3. at the start of the pi sequence
-                    while limit <= typed_characters.len()+2 {
-                        hint_display.push(pi[limit-1]); // the one is subtracted to account for the 0 index
-                        limit += 1;
+                        break;
+                    } else {
+                        counter += 1; // increment the counter
                     }
 
                     // This function will animate the hint display
-                    for i in 0..(animation_counter + 2) {
-                        let value = animate_letters(sequence, animation_counter);
+                    if typed_characters.len() == animation_counter + 1 {
+                        for i in 0..(animation_counter + 2) {
+                            let value = animate_letters(sequence, animation_counter, howmany);
 
-                        let big_text = BigTextBuilder::default()
-                            .pixel_size(PixelSize::Full)
-                            .style(Style::new())
-                            .lines(vec![
-                                value[i].to_string().clone().white().into(), // the hint display is white and shown
-                            ])
-                            .build()?;
-
-                        terminal.draw(|f| {
-                            let layout = Layout::default()
-                                .direction(Direction::Vertical)
-                                .constraints(vec![
-                                    Constraint::Min(7),
-                                    Constraint::Percentage(100),
+                            let big_text = BigTextBuilder::default()
+                                .pixel_size(PixelSize::Full)
+                                .style(Style::new())
+                                .lines(vec![
+                                    value.0[i + value.1].to_string().clone().white().into(), // the hint display is white and shown
                                 ])
-                                .split(f.size());
+                                .build()?;
 
-                            f.render_widget(big_text, layout[0]);
+                            terminal.draw(|f| {
+                                let layout = Layout::default()
+                                    .direction(Direction::Vertical)
+                                    .constraints(vec![
+                                        Constraint::Min(8),
+                                        Constraint::Percentage(100),
+                                    ])
+                                    .split(f.size());
 
-                            f.render_widget(
-                                Paragraph::new(typed_characters.to_string())
-                                    .block(Block::default().title(format!("Pi memorized to {} digits", (max(counter, 1) - 1)).to_string()).borders(Borders::ALL)),
-                                layout[1]);
-                        })?;
-                        sleep(Duration::from_millis(333)); // sleep for 333 milliseconds
+                                f.render_widget(big_text, layout[0]);
+
+                                f.render_widget(
+                                    Paragraph::new(typed_characters.to_string()).block(
+                                        Block::default()
+                                            .title(
+                                                format!(
+                                                    "Pi memorized to {} digits",
+                                                    (max(animation_counter, 0))
+                                                )
+                                                .to_string(),
+                                            )
+                                            .borders(Borders::ALL),
+                                    ),
+                                    layout[1],
+                                );
+                            })?;
+                            if i < animation_counter + 1 {
+                                sleep(Duration::from_millis(500)); // sleep for 500 milliseconds
+                            }
+                            animation_counter -= value.1;
+                        }
+                        animation_counter += 1; // increment the animation counter
+                        counter = 0;
+                        typed_characters.clear();
                     }
-                    typed_characters = "".to_string(); // clear the input buffer
-                    animation_counter += 1; // reset the animation counter
-                    counter = 0 // reset the counter
+                    terminal.draw(|f| {
+                        let layout = Layout::default()
+                            .direction(Direction::Vertical)
+                            .constraints(vec![Constraint::Min(8), Constraint::Percentage(100)])
+                            .split(f.size());
+
+                        f.render_widget(
+                            Paragraph::new(typed_characters.to_string()).block(
+                                Block::default()
+                                    .title(
+                                        format!(
+                                            "Pi memorized to {} digits",
+                                            (max(animation_counter, 0))
+                                        )
+                                        .to_string(),
+                                    )
+                                    .borders(Borders::ALL),
+                            ),
+                            layout[1],
+                        );
+                    })?;
                 }
             }
         }
@@ -146,24 +171,31 @@ fn main() -> Result<()>{
     // shutdown: reset terminal back to original state
     crossterm::execute!(std::io::stderr(), LeaveAlternateScreen)?;
     disable_raw_mode()?;
-    println!("You memorized {} digits of pi! The last digit was {}, not {}.", max(counter, 1) - 1, pi[counter], typed_characters.chars().last().unwrap());
-    // assert!( std::process::Command::new("cls").status().or_else(|_| std::process::Command::new("clear").status()).unwrap().success() );
+    println!(
+        "You memorized {} digits of pi! The last digit was {}, not {}.",
+        max(counter, 1) - 1,
+        pi[counter],
+        typed_characters.chars().last().unwrap_or('q')
+    );
     Ok(())
 }
 
-/*
-fn log(variable: &str) -> std::io::Result<()> {
-    let mut file = File::create("log.txt")?;
-    file.write_all(variable.as_bytes())?;
-    Ok(())
-}
- */
-
-fn animate_letters(sequence: &str, counter: usize) -> Vec<String> {
-    let mut hint_vec: Vec<String> = Vec::new();
+fn animate_letters(
+    sequence: &str,
+    counter: usize,
+    mut howmany: usize,
+) -> (VecDeque<String>, usize) {
+    let mut hint_vec = VecDeque::new();
     for i in 0..(counter + 1) {
-        hint_vec.push(sequence[..i + 2].to_string().parse().unwrap())
+        hint_vec.push_back(sequence[..i + 2].to_string().parse().unwrap());
+        if let Some((w, _h)) = term_size::dimensions() {
+            if hint_vec.len() * 8 + 4 >= w {
+                hint_vec.pop_front();
+                howmany += 1;
+            }
+        }
     }
-    hint_vec.push(" ".to_string());
-    hint_vec
+
+    hint_vec.push_back(" ".to_string());
+    (hint_vec, howmany)
 }
